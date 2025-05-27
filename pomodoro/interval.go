@@ -7,6 +7,7 @@
 package pomodoro
 
 import (
+	"context"
 	"errors"
 	"time"
 )
@@ -133,4 +134,73 @@ func nextCategory(r Repository) (string, error) {
 
 	// Все 3 последних перерыва были короткими - следующий будет длинный
 	return CategoryLongBreak, nil
+}
+
+type Callback func(Interval)
+
+func tick(ctx context.Context, id int64, config *IntevalConfig, start, periodic, end Callback) error {
+	// Создаём тикер, в котором будет канал C, c сигналом каждую секунду,
+	// в сигнале будет содержаться текущее время. Буфер канала - 1 элемент, если не успеем
+	// вычиать из канала значение, оно потеряется без к-л побочных эффектов.
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	i, err := config.repo.ByID(id)
+	if err != nil {
+		return err
+	}
+	// Время интервала закончится через колчисество секунд
+	// i.PlannedDuration - i.ActualDuration
+	// Мы можем перезапустить интервал после того, как он отработает
+	// какое-то время и поставлен на паузу. Поэтому при старте (рестарте)
+	// мы вычисляем время истечения с учетом возможного рестарта, когда в
+	// ActualDuration уже накоплено какое-то количесто секунд.
+	expire := time.After(i.PlannedDuration - i.ActualDuration)
+	start(i)
+
+	for {
+		select {
+		// Ждём и получаем сигнал из канала
+		case <-ticker.C:
+			// сюда попадаем каждую секунду
+
+			// Получаем интервал из репозитория
+			i, err := config.repo.ByID(id)
+			if err != nil {
+				return err
+			}
+
+			// если интервал в состоянии StatePaused - не делаем ничего
+			if i.State == StatePaused {
+				return nil
+			}
+
+			// Увеличиваем продолжительность ActualDuration
+			// на одну секунду (потому что мы здесь оказываемся каждую секунду)
+			// Обновляем интервал в репозитории
+			// Вызываем callback periodic
+			i.ActualDuration += time.Second
+			if err := config.repo.Update(i); err != nil {
+				return err
+			}
+			periodic(i)
+		case <-expire:
+			// Таймер закончился
+			i, err := config.repo.ByID(id)
+			if err != nil {
+				return err
+			}
+			i.State = StateDone
+			end(i)
+			return config.repo.Update(i)
+		case <-ctx.Done():
+			// Получили сигнал из контекста - нужно прервать исполнение
+			i, err := config.repo.ByID(id)
+			if err != nil {
+				return err
+			}
+			i.State = StateCancelled
+			return config.repo.Update(i)
+		}
+	}
 }
