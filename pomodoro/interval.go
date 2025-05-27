@@ -9,6 +9,7 @@ package pomodoro
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -59,7 +60,7 @@ type Repository interface {
 // Ошибки
 var (
 	ErrNoIntervals        = errors.New("интервалы отсутствуют")
-	ErrIntervalNotRunnins = errors.New("интервал не исполняется")
+	ErrIntervalNotRunning = errors.New("интервал не исполняется")
 	ErrIntervalCompleted  = errors.New("интервал завершен или отменён")
 	ErrInvalidState       = errors.New("неверное состояние интервала")
 	ErrInvalidID          = errors.New("неверный индентификатор интервала")
@@ -229,4 +230,67 @@ func newInterval(config *IntevalConfig) (Interval, error) {
 		return i, err
 	}
 	return i, nil
+}
+
+func GetInterval(config *IntevalConfig) (Interval, error) {
+	i := Interval{} // TODO: здесь предупреждение компилятора - как убрать
+	var err error
+
+	// Получаем последний интервал из репозитория
+	i, err = config.repo.Last()
+
+	// Если ошибка чтения из репозитория, и это не "интервалы отсутствуют"
+	// - тогда нужно вернуть ошибку
+	if err != nil && err != ErrNoIntervals {
+		return i, err
+	}
+
+	// Ошибки чтения из репозитория нет, и интервал не завершен и не отменён
+	// - возвращаем то, что вернул репозиторий:
+	//   это работающий или приостановленный интервал
+	if err == nil && i.State != StateCancelled && i.State != StateDone {
+		return i, nil
+	}
+
+	// Если последний интервал неактивен или недоступен -
+	// тогда создаём новый по конфигу
+	return newInterval(config)
+}
+
+// Запустить интервал
+func (i Interval) Start(ctx context.Context, config *IntevalConfig,
+	start, periodic, end Callback,
+) error {
+	switch i.State {
+	case StateRunning:
+		// Уже исполняется - не делаем ничего
+		return nil
+	case StateNotStarted:
+		// Нужно запустить - интервал не стартован
+		i.StartTime = time.Now()
+		fallthrough // следующий case будет исполнен принудительно - стартуем интервал
+	case StatePaused:
+		// Мы на паузе - возобновим и запишем в репозиторий
+		i.State = StateRunning
+		if err := config.repo.Update(i); err != nil {
+			return err
+		}
+		return tick(ctx, i.ID, config, start, periodic, end)
+	case StateCancelled, StateDone:
+		return fmt.Errorf("%w: нелзя запустить завершенный интервал", ErrIntervalCompleted)
+	default:
+		return fmt.Errorf("%w: %d", ErrInvalidState, i.State)
+	}
+}
+
+// Поставить интервал на паузу
+func (i Interval) Pause(config *IntevalConfig) error {
+	// Нельзя поставить на паузу интервал, который не исполняется
+	if i.State != StateRunning {
+		return ErrIntervalNotRunning
+	}
+
+	// Установим состояние в паузу и обновим интервал в репозитории
+	i.State = StatePaused
+	return config.repo.Update(i)
 }
