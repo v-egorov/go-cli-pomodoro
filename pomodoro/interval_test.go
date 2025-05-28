@@ -30,7 +30,7 @@ func TestNewConfig(t *testing.T) {
 			if config.PomodoroDuration != tc.expect.PomodoroDuration ||
 				config.LongBreakDuration != tc.expect.LongBreakDuration ||
 				config.ShortBreakDuration != tc.expect.ShortBreakDuration {
-				// error
+				t.Errorf("Ожидали конфиг: %q\n, получили: %q", tc.expect, config)
 			}
 		})
 	}
