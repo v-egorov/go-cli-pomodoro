@@ -39,4 +39,7 @@ func TestNewConfig(t *testing.T) {
 func TestGetInterval(t *testing.T) {
 	repo, cleanup := getRepo(t)
 	defer cleanup()
+
+	const duration = 1 * time.Millisecond
+	config := pomodoro.NewConfig(repo, 3*duration, duration, 2*duration)
 }
