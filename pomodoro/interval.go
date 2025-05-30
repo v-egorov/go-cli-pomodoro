@@ -143,6 +143,7 @@ func tick(ctx context.Context, id int64, config *IntevalConfig, start, periodic,
 	// Создаём тикер, в котором будет канал C, c сигналом каждую секунду,
 	// в сигнале будет содержаться текущее время. Буфер канала - 1 элемент, если не успеем
 	// вычиать из канала значение, оно потеряется без к-л побочных эффектов.
+	// log.Printf("tick: %d\n", id)
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
