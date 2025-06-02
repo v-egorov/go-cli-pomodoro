@@ -194,7 +194,7 @@ func tick(ctx context.Context, id int64, config *IntevalConfig, start, periodic,
 			}
 			periodic(i)
 		case <-expire: // из канала expire
-			// Таймер закончился
+			// Таймер expire закончился
 			log.Printf("tick - expire")
 			i, err := config.repo.ByID(id)
 			if err != nil {
