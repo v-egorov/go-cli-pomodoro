@@ -7,7 +7,7 @@ import (
 	"vegorov.ru/go-cli/pomo/pomodoro/repository"
 )
 
-// Helper function - возвращает репозиторий для тестов
+// Helper function - возвращает репозиторий для тестов + cleanup-function
 func getRepo(t *testing.T) (pomodoro.Repository, func()) {
 	t.Helper()
 	// для in-memory не требуется cleanup function, поэтому возвращаем пустую func() {}

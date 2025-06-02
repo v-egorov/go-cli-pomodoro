@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"testing"
 	"time"
 
@@ -40,6 +41,7 @@ func TestNewConfig(t *testing.T) {
 }
 
 func TestGetInterval(t *testing.T) {
+	// Получаем repo из helper-функции - это repo для теста
 	repo, cleanup := getRepo(t)
 	defer cleanup()
 
@@ -123,9 +125,11 @@ func TestPause(t *testing.T) {
 	const duration = 2 * time.Second
 	// const duration = 1900 * time.Millisecond
 
+	// Получаем repo из helper-функции - это repo для теста
 	repo, cleanup := getRepo(t)
 	defer cleanup()
 
+	// Создаём тестовый config - внутри него будет и repo
 	config := pomodoro.NewConfig(repo, duration, duration, duration)
 
 	testCases := []struct {
@@ -154,6 +158,8 @@ func TestPause(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 
+			// Получаем [новый] интервал из конфига - мы его потом будем запускать.
+			// GetInterval создаёт интервал в репозитории.
 			i, err := pomodoro.GetInterval(config)
 			if err != nil {
 				t.Fatal(err)
@@ -165,33 +171,43 @@ func TestPause(t *testing.T) {
 				t.Errorf("End Callback не должен вызываться")
 			}
 			periodic := func(i pomodoro.Interval) {
+				log.Printf("periodic callback Interval %d", i.ID)
+				// Здесь получается что каждую секунду будем ставить на паузу через этот callback
 				if err := i.Pause(config); err != nil {
 					t.Fatal(err)
 				}
 			}
 
 			if tc.start {
+				// Если интервал должен быть запущем - стартуем его
+				// Start при этом обновляет интервал в репозитории
 				if err := i.Start(ctx, config, start, periodic, end); err != nil {
 					t.Fatal(err)
 				}
 			}
 
+			// Вновь получаем интервал из репозитория - и, поскольку он там только один,
+			// то вернётся именно тот, который мы создали и запустили выше
 			i, err = pomodoro.GetInterval(config)
 			if err != nil {
 				t.Fatal(err)
 			}
 
+			// И ставим его на паузу (опять же с обновлением в репозитории)
+			// Здесь мы проверяем кейс, когда на паузу ставится интервал, который ещё не исполняется -
+			// ожидаем ошибку expError := pomodoro.ErrIntervalNotRunning
 			err = i.Pause(config)
 			if err != nil {
 				if !errors.Is(err, expError) {
 					t.Fatalf("Ожидали ошибку: %q, а получили: %q", expError, err)
 				}
 			}
-
+			// Здесь также кейс той же ожидаемой ошибки
 			if err == nil {
 				t.Errorf("Ожидали ошибку: %q, а получили nil", expError)
 			}
 
+			// получаем из репозитория интервал
 			i, err = repo.ByID(i.ID)
 			if err != nil {
 				t.Fatal(err)

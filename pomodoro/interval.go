@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -160,14 +161,17 @@ func tick(ctx context.Context, id int64, config *IntevalConfig, start, periodic,
 	// какое-то время и поставлен на паузу. Поэтому при старте (рестарте)
 	// мы вычисляем время истечения с учетом возможного рестарта, когда в
 	// ActualDuration уже накоплено какое-то количесто секунд.
+	// В канал expire получаем событие после оставшегося врмемени на выполнение.
 	expire := time.After(i.PlannedDuration - i.ActualDuration)
 	start(i)
 
 	for {
+		log.Printf("tick for cycle")
 		select {
 		// Ждём и получаем сигнал из канала
-		case <-ticker.C:
+		case <-ticker.C: // из канала ticker
 			// сюда попадаем каждую секунду
+			log.Printf("ticker.C")
 
 			// Получаем интервал из репозитория
 			i, err := config.repo.ByID(id)
@@ -189,8 +193,9 @@ func tick(ctx context.Context, id int64, config *IntevalConfig, start, periodic,
 				return err
 			}
 			periodic(i)
-		case <-expire:
+		case <-expire: // из канала expire
 			// Таймер закончился
+			log.Printf("tick - expire")
 			i, err := config.repo.ByID(id)
 			if err != nil {
 				return err
@@ -265,6 +270,7 @@ func GetInterval(config *IntevalConfig) (Interval, error) {
 func (i Interval) Start(ctx context.Context, config *IntevalConfig,
 	start, periodic, end Callback,
 ) error {
+	log.Printf("Start Interval %d\n", i.ID)
 	switch i.State {
 	case StateRunning:
 		// Уже исполняется - не делаем ничего
@@ -274,7 +280,7 @@ func (i Interval) Start(ctx context.Context, config *IntevalConfig,
 		i.StartTime = time.Now()
 		fallthrough // следующий case будет исполнен принудительно - стартуем интервал
 	case StatePaused:
-		// Мы на паузе - возобновим и запишем в репозиторий
+		// Мы на паузе (или ещё на стартовали) - возобновим и запишем в репозиторий
 		i.State = StateRunning
 		if err := config.repo.Update(i); err != nil {
 			return err
@@ -289,6 +295,7 @@ func (i Interval) Start(ctx context.Context, config *IntevalConfig,
 
 // Поставить интервал на паузу
 func (i Interval) Pause(config *IntevalConfig) error {
+	log.Printf("Pause Inetrval %d\n", i.ID)
 	// Нельзя поставить на паузу интервал, который не исполняется
 	if i.State != StateRunning {
 		return ErrIntervalNotRunning
