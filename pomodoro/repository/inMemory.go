@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"log/slog"
 	"sync"
 
 	"vegorov.ru/go-cli/pomo/pomodoro"
@@ -11,12 +12,14 @@ import (
 type inMemoryRepo struct {
 	// не именованное поле, методы будут доступны в структуре inMemoryRepo
 	sync.RWMutex
-	inetravls []pomodoro.Interval
+	// Интервалы хранятся в слайсе intervals, доступ к - семафорим через RWMutex
+	intervals []pomodoro.Interval
 }
 
 func NewInMemoryRepo() *inMemoryRepo {
+	slog.Debug("Creating InMemoryRepo")
 	return &inMemoryRepo{
-		inetravls: []pomodoro.Interval{},
+		intervals: []pomodoro.Interval{},
 	}
 }
 
@@ -28,9 +31,9 @@ func (r *inMemoryRepo) Create(i pomodoro.Interval) (int64, error) {
 	defer r.Unlock()
 
 	// в ID по сути будет 1-based номер по порядку в слайсе
-	i.ID = int64(len(r.inetravls)) + 1
+	i.ID = int64(len(r.intervals)) + 1
 
-	r.inetravls = append(r.inetravls, i)
+	r.intervals = append(r.intervals, i)
 
 	return i.ID, nil
 }
@@ -45,7 +48,7 @@ func (r *inMemoryRepo) Update(i pomodoro.Interval) error {
 	}
 
 	// Заменяем в слайсе значение на новое - которое пришло в параметре i
-	r.inetravls[i.ID-1] = i
+	r.intervals[i.ID-1] = i
 	return nil
 }
 
@@ -58,7 +61,7 @@ func (r *inMemoryRepo) ByID(id int64) (pomodoro.Interval, error) {
 		return i, fmt.Errorf("%w: %d", pomodoro.ErrInvalidID, id)
 	}
 
-	i = r.inetravls[id-1]
+	i = r.intervals[id-1]
 	return i, nil
 }
 
@@ -68,10 +71,10 @@ func (r *inMemoryRepo) Last() (pomodoro.Interval, error) {
 	defer r.Unlock()
 
 	i := pomodoro.Interval{}
-	if len(r.inetravls) == 0 {
+	if len(r.intervals) == 0 {
 		return i, pomodoro.ErrNoIntervals
 	}
-	return r.inetravls[len(r.inetravls)-1], nil
+	return r.intervals[len(r.intervals)-1], nil
 }
 
 // Возвращает n последних перерывов из репозитория
@@ -82,15 +85,15 @@ func (r *inMemoryRepo) Breaks(n int) ([]pomodoro.Interval, error) {
 	// Пустышка для накопления данных для возврата
 	returnData := []pomodoro.Interval{}
 
-	for k := len(r.inetravls) - 1; k >= 0; k-- {
-		if r.inetravls[k].Category == pomodoro.CategoryPomodoro {
+	for k := len(r.intervals) - 1; k >= 0; k-- {
+		if r.intervals[k].Category == pomodoro.CategoryPomodoro {
 			// В категориях (типах) интервалов у нас есть только CategoryPomodoro (работа)
 			// и перерывы - поэтому скипаем работу, а если не скипнули - то это перерыв,
 			// а они-то нам и нужны.
 			continue
 		}
 		// Накапливаем слайс с перерывами
-		returnData = append(returnData, r.inetravls[k])
+		returnData = append(returnData, r.intervals[k])
 		if len(returnData) == n {
 			return returnData, nil
 		}
