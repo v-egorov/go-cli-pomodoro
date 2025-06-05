@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"testing"
 	"time"
 
@@ -171,7 +170,6 @@ func TestPause(t *testing.T) {
 				t.Errorf("End Callback не должен вызываться")
 			}
 			periodic := func(i pomodoro.Interval) {
-				log.Printf("periodic callback Interval %d", i.ID)
 				// Здесь получается что каждую секунду будем ставить на паузу через этот callback
 				if err := i.Pause(config); err != nil {
 					t.Fatal(err)
@@ -208,6 +206,92 @@ func TestPause(t *testing.T) {
 			}
 
 			// получаем из репозитория интервал
+			i, err = repo.ByID(i.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if i.State != tc.expState {
+				t.Errorf("Ожидали состояние интервала: %d, а получили: %d", tc.expState, i.State)
+			}
+
+			if i.ActualDuration != tc.expDuration {
+				t.Errorf("Ожидали продолжительность: %q, а получили: %q", tc.expDuration, i.ActualDuration)
+			}
+
+			cancel()
+		})
+	}
+}
+
+func TestStart(t *testing.T) {
+	const duration = 2 * time.Second
+
+	repo, cleanup := getRepo(t)
+	defer cleanup()
+
+	config := pomodoro.NewConfig(repo, duration, duration, duration)
+
+	testCases := []struct {
+		name        string
+		cancel      bool
+		expState    int
+		expDuration time.Duration
+	}{
+		{
+			name:        "Finish",
+			cancel:      false,
+			expState:    pomodoro.StateDone,
+			expDuration: duration,
+		},
+		{
+			name:        "Cancel",
+			cancel:      true,
+			expState:    pomodoro.StateCancelled,
+			expDuration: duration / 2,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+
+			i, err := pomodoro.GetInterval(config)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			start := func(i pomodoro.Interval) {
+				if i.State != pomodoro.StateRunning {
+					t.Errorf("Ожидали состояние интервала: %q, получили: %q", pomodoro.StateRunning, i.State)
+				}
+				if i.ActualDuration >= i.PlannedDuration {
+					t.Errorf("Ожидали ActualDuration: %q должно быть меньще PlannedDuration: %q", i.ActualDuration, i.PlannedDuration)
+				}
+			}
+
+			end := func(i pomodoro.Interval) {
+				if i.State != tc.expState {
+					t.Errorf("Ожидали состояние: %q, а получили: %q", tc.expState, i.State)
+				}
+				if tc.cancel {
+					t.Error("Callback [end] не должен быть вызван в этом тесте")
+				}
+			}
+
+			periodic := func(i pomodoro.Interval) {
+				if i.State != pomodoro.StateRunning {
+					t.Errorf("Ожидали состояние интервала: %q, а получили: %q", pomodoro.StateRunning, i.State)
+				}
+				if tc.cancel {
+					cancel()
+				}
+			}
+
+			if err := i.Start(ctx, config, start, periodic, end); err != nil {
+				t.Fatal(err)
+			}
+
 			i, err = repo.ByID(i.ID)
 			if err != nil {
 				t.Fatal(err)

@@ -10,7 +10,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 )
 
@@ -147,7 +146,6 @@ func tick(ctx context.Context, id int64, config *IntevalConfig, start, periodic,
 	// Создаём тикер, в котором будет канал C, c сигналом каждую секунду,
 	// в сигнале будет содержаться текущее время. Буфер канала - 1 элемент, если не успеем
 	// вычиать из канала значение, оно потеряется без к-л побочных эффектов.
-	// log.Printf("tick: %d\n", id)
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
@@ -166,12 +164,10 @@ func tick(ctx context.Context, id int64, config *IntevalConfig, start, periodic,
 	start(i)
 
 	for {
-		log.Printf("tick for cycle")
 		select {
 		// Ждём и получаем сигнал из канала
 		case <-ticker.C: // из канала ticker
 			// сюда попадаем каждую секунду
-			log.Printf("ticker.C")
 
 			// Получаем интервал из репозитория
 			i, err := config.repo.ByID(id)
@@ -195,7 +191,6 @@ func tick(ctx context.Context, id int64, config *IntevalConfig, start, periodic,
 			periodic(i)
 		case <-expire: // из канала expire
 			// Таймер expire закончился
-			log.Printf("tick - expire")
 			i, err := config.repo.ByID(id)
 			if err != nil {
 				return err
@@ -270,7 +265,6 @@ func GetInterval(config *IntevalConfig) (Interval, error) {
 func (i Interval) Start(ctx context.Context, config *IntevalConfig,
 	start, periodic, end Callback,
 ) error {
-	log.Printf("Start Interval %d\n", i.ID)
 	switch i.State {
 	case StateRunning:
 		// Уже исполняется - не делаем ничего
@@ -295,7 +289,6 @@ func (i Interval) Start(ctx context.Context, config *IntevalConfig,
 
 // Поставить интервал на паузу
 func (i Interval) Pause(config *IntevalConfig) error {
-	log.Printf("Pause Inetrval %d\n", i.ID)
 	// Нельзя поставить на паузу интервал, который не исполняется
 	if i.State != StateRunning {
 		return ErrIntervalNotRunning
