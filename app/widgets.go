@@ -49,7 +49,27 @@ func newWidgets(ctx context.Context, errorCh chan<- error) (*widgets, error) {
 	w.updateTxtTimer = make(chan string)
 	w.updateTxtType = make(chan string)
 
-	return nil, err
+	w.donTimer, err = newDonut(ctx, w.updateDonTimer, errorCh)
+	if err != nil {
+		return nil, err
+	}
+
+	w.disType, err = newSegmentDisplay(ctx, w.updateTxtType, errorCh)
+	if err != nil {
+		return nil, err
+	}
+
+	w.txtInfo, err = newText(ctx, w.upateTxtInfo, errorCh)
+	if err != nil {
+		return nil, err
+	}
+
+	w.txtTimer, err = newText(ctx, w.updateTxtTimer, errorCh)
+	if err != nil {
+		return nil, err
+	}
+
+	return w, err
 }
 
 func newText(ctx context.Context, updateText <-chan string, errorCh chan<- error) (*text.Text, error) {

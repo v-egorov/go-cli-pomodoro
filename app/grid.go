@@ -1,6 +1,8 @@
 package app
 
 import (
+	"log"
+
 	"github.com/mum4k/termdash/align"
 	"github.com/mum4k/termdash/container"
 	"github.com/mum4k/termdash/container/grid"
@@ -9,7 +11,10 @@ import (
 )
 
 func newGrid(b *buttonsSet, w *widgets, t terminalapi.Terminal) (*container.Container, error) {
+	log.Println("newGrid")
 	builder := grid.New()
+	log.Println("builder created")
+
 	builder.Add(
 		grid.RowHeightPerc(30,
 			grid.ColWidthPercWithOpts(30,
@@ -18,11 +23,14 @@ func newGrid(b *buttonsSet, w *widgets, t terminalapi.Terminal) (*container.Cont
 					container.BorderTitle("Жми Q для выхода"),
 				},
 				// внутренняя строка
-				grid.RowHeightPerc(80, grid.Widget(w.donTimer)),
-				grid.RowHeightPercWithOpts(20, []container.Option{
-					container.AlignHorizontal(align.HorizontalCenter),
-				},
-					grid.Widget(w.txtTimer, container.AlignHorizontal(align.HorizontalCenter),
+				grid.RowHeightPerc(80,
+					grid.Widget(w.donTimer)),
+				grid.RowHeightPercWithOpts(20,
+					[]container.Option{
+						container.AlignHorizontal(align.HorizontalCenter),
+					},
+					grid.Widget(w.txtTimer,
+						container.AlignHorizontal(align.HorizontalCenter),
 						container.AlignVertical(align.VerticalMiddle),
 						container.PaddingLeftPercent(49),
 					),
