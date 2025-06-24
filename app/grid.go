@@ -16,7 +16,7 @@ func newGrid(b *buttonsSet, w *widgets, t terminalapi.Terminal) (*container.Cont
 	log.Println("builder created")
 
 	builder.Add(
-		grid.RowHeightPerc(30,
+		grid.RowHeightPerc(40,
 			grid.ColWidthPercWithOpts(30,
 				[]container.Option{
 					container.Border(linestyle.Light),
@@ -38,10 +38,10 @@ func newGrid(b *buttonsSet, w *widgets, t terminalapi.Terminal) (*container.Cont
 			),
 
 			grid.ColWidthPerc(70,
-				grid.RowHeightPerc(80,
+				grid.RowHeightPerc(70,
 					grid.Widget(w.disType, container.Border(linestyle.Light)),
 				),
-				grid.RowHeightPerc(20,
+				grid.RowHeightPerc(30,
 					grid.Widget(w.txtInfo, container.Border(linestyle.Light)),
 				),
 			),
@@ -49,13 +49,13 @@ func newGrid(b *buttonsSet, w *widgets, t terminalapi.Terminal) (*container.Cont
 	)
 
 	builder.Add(
-		grid.RowHeightPerc(10,
+		grid.RowHeightPerc(20,
 			grid.ColWidthPerc(50, grid.Widget(b.btStart)),
 			grid.ColWidthPerc(50, grid.Widget(b.btPause)),
 		),
 	)
 
-	builder.Add(grid.RowHeightPerc(60))
+	builder.Add(grid.RowHeightPerc(40))
 
 	gridOpts, err := builder.Build()
 	if err != nil {
