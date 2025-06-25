@@ -22,15 +22,15 @@ func newButtonSet(ctx context.Context, config *pomodoro.IntevalConfig, w *widget
 		errorCh <- err
 
 		start := func(i pomodoro.Interval) {
-			message := "Возьми перерывчик"
+			message := " Возьми перерывчик "
 			if i.Category == pomodoro.CategoryPomodoro {
-				message = "Надо бы поднажать"
+				message = " Надо бы поднажать "
 			}
 			w.update([]int{}, i.Category, message, "", redrawCh)
 		}
 
 		end := func(pomodoro.Interval) {
-			w.update([]int{}, "", "Ничего не работает...", "", redrawCh)
+			w.update([]int{}, "", " Ничего не работает... ", "", redrawCh)
 		}
 
 		periodic := func(i pomodoro.Interval) {
@@ -55,24 +55,27 @@ func newButtonSet(ctx context.Context, config *pomodoro.IntevalConfig, w *widget
 			errorCh <- err
 			return
 		}
-		w.update([]int{}, "", "На паузе.. жми Start для продолжения", "", redrawCh)
+		w.update([]int{}, "", " На паузе.. жми Start для продолжения ", "", redrawCh)
 	}
 
-	btStart, err := button.New("(s)start", func() error {
+	btStart, err := button.New(" (s)start ", func() error {
 		go startInterval()
 		return nil
-	}, button.GlobalKey('s'), button.WidthFor("(p)ause"), button.Height(2))
+	},
+		button.GlobalKey('s'),
+		button.WidthFor(" (p)ause "),
+		button.Height(3))
 	if err != nil {
 		return nil, err
 	}
 
-	btPause, err := button.New("(p)ause", func() error {
+	btPause, err := button.New(" (p)ause ", func() error {
 		go pauseInterval()
 		return nil
 	},
 		button.FillColor(cell.ColorNumber(220)),
 		button.GlobalKey('p'),
-		button.Height(2),
+		button.Height(3),
 	)
 	if err != nil {
 		return nil, err

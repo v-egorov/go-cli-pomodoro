@@ -17,7 +17,7 @@ func newGrid(b *buttonsSet, w *widgets, t terminalapi.Terminal) (*container.Cont
 
 	builder.Add(
 		grid.RowHeightPerc(40,
-			grid.ColWidthPercWithOpts(30,
+			grid.ColWidthPercWithOpts(40,
 				[]container.Option{
 					container.Border(linestyle.Light),
 					container.BorderTitle("Жми Q для выхода"),
@@ -37,7 +37,7 @@ func newGrid(b *buttonsSet, w *widgets, t terminalapi.Terminal) (*container.Cont
 				),
 			),
 
-			grid.ColWidthPerc(70,
+			grid.ColWidthPerc(60,
 				grid.RowHeightPerc(70,
 					grid.Widget(w.disType, container.Border(linestyle.Light)),
 				),
